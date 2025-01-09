@@ -194,3 +194,156 @@ class Vytvor_DKA:
         print("Prechody:")
         for (stav, symbol), do_stavu in self.prechody.items():
             print(f"  ({stav}, '{symbol}') -> {do_stavu}")
+
+
+class PridajAutomat:
+    def __init__(self):
+        self.stavy = set()
+        self.abeceda = set()
+        self.start_state = None
+        self.prechody = {}  # {(state, symbol): [next_states]}
+        self.koncove_stavy = set()
+
+    def input_nfa(self): # zadavanie DKA
+        print("Zadaj stavy (oddelene ciarkou):")
+        self.stavy = set(input().split(","))
+
+        print("Zadaj vstupy (oddelene ciarkou):")
+        self.abeceda = set(input().split(","))
+        self.abeceda.add('epsilon')  # Pravidlo pre pridavanie epsilonu
+
+        print("Zadaj pociatocny stav:")
+        self.start_state = input().strip()
+
+        print("Zadaj koncove stavy (oddelene ciarkou):")
+        self.koncove_stavy = set(input().split(","))
+
+        print("Zadaj prechody  'Stav,vstupny_symbol -> ddo_stavu,do_stavu,...' (Napis 'done' pre ukoncenie zadavania):")
+        while True:
+            zadane_prechody = input()
+            if zadane_prechody.lower() == 'done':
+                break
+            try:
+                lava_strana, prava_strana = zadane_prechody.split("->")
+                stav, vstupny_symbol = lava_strana.split(",")
+                do_stavu = prava_strana.split(",")
+                if (stav, vstupny_symbol) not in self.prechody: # ak este neexistuje takyto prechod pridaj novy stav z a vstupny symbol
+                    self.prechody[(stav, vstupny_symbol)] = []
+                self.prechody[(stav, vstupny_symbol)].extend(do_stavu)
+            except ValueError:
+                print("Nieco bolo zle zadane")
+
+    def riesenie_epsilonu(self, stav): # metoda na vyhodenie epislonu pre spojenie stavov ktore na seba prechadzali na epsilon
+        stack = [stav]
+        spojeny_stav = {stav}
+
+        while stack: # kym v stacku nieco je popni to a ries
+            prave_riesi = stack.pop()
+            if (prave_riesi, 'epsilon') in self.prechody: # ak sa nachadza tento stav v prechodoch
+                for next_state in self.prechody[(prave_riesi, 'epsilon')]:
+                    if next_state not in spojeny_stav:
+                        spojeny_stav.add(next_state)
+                        stack.append(next_state)
+
+        return spojeny_stav
+
+    def vyrob_DKA(self): # konverzia NKA na DKA
+        DKA_stavy = set()
+        DKA_start_state = frozenset(self.riesenie_epsilonu(self.start_state))
+        DKA_koncove_stavy = set()
+        DKA_prechody = {}
+        nespracovane_stavy = [DKA_start_state]
+
+        while nespracovane_stavy: # kym este existuju nespracovane stavy
+            prave_rieseny = nespracovane_stavy.pop()
+            DKA_stavy.add(prave_rieseny)
+            if any(state in self.koncove_stavy for state in prave_rieseny): # ak je nejaky stav v koncovych stavoch tak ho pridaj do prave riesenych
+                DKA_koncove_stavy.add(prave_rieseny)
+            for symbol in self.abeceda - {'epsilon'}: # zbavenie sa epislonovych prechodiov
+                nasledujuci_stav = set()
+                for stav in prave_rieseny:
+                    if (stav, symbol) in self.prechody:
+                        for do_stavu in self.prechody[(stav, symbol)]:
+                            nasledujuci_stav.update(self.riesenie_epsilonu(do_stavu))
+                if nasledujuci_stav:
+                    nasledujuci_stav = frozenset(nasledujuci_stav)
+                    DKA_prechody[(prave_rieseny, symbol)] = nasledujuci_stav
+                    if nasledujuci_stav not in DKA_stavy:
+                        nespracovane_stavy.append(nasledujuci_stav)
+
+        self.zobraz_DKA(DKA_stavy, DKA_start_state, DKA_koncove_stavy, DKA_prechody)
+
+    def zobraz_DKA(self, DKA_stavy, DKA_start_state, DKA_koncove_stavy, DKA_prechody):
+        print("\nDKA Stavy:", [list(state) for state in DKA_stavy])
+        print("DKA abeceda:", self.abeceda - {'epsilon'})
+        print("DkA Start State:", list(DKA_start_state))
+        print("DkA Koncove_stavy:", [list(state) for state in DKA_koncove_stavy])
+        print("DKA Prechody:")
+        for (state, symbol), next_state in DKA_prechody.items():
+            print(f"  ({list(state)}, '{symbol}') -> {list(next_state)}")
+
+
+def main():
+    gramatika = Gramatika()
+
+    print("Zadaj neterminaly (oddelene ciarkou):")
+    neterminaly = input().split(",")
+    for nt in neterminaly:
+        gramatika.pridaj_neterminaly(nt.strip())
+
+    print("Zadaj terminaly (comma-separated):")
+    terminaly = input().split(",")
+    for t in terminaly:
+        gramatika.pridaj_terminal(t.strip())
+
+    print("Zadaj pravidla 'NonTerminal -> production' ('done' na ukoncenie):")
+    while True:
+        zadaj_pravidla = input()
+        if zadaj_pravidla.lower() == 'done':
+            break
+        try:
+            neterminal, PSP = zadaj_pravidla.split("->")
+            gramatika.pridaj_pravidlo(neterminal.strip(), PSP.strip())
+        except ValueError:
+            print("Nespravny format")
+
+    print("Zadaj zaciatocny netemrinal:")
+    start_symbol = input().strip()
+    gramatika.urci_start_symbol(start_symbol)
+
+    gramatika.zobraz()
+
+    print("\nKontrola typu gramatiky")
+    if Kontrola.kontrola_bezkontextovosti(gramatika):
+        print("Gramatika je bezkontextova.")
+    else:
+        print("Gramatika nie je bezkontextova.")
+
+    if Kontrola.kontrola_regularity(gramatika):
+        print("Gramatika je regularna.")
+        print("\nTvorba DKA")
+        dka = Vytvor_DKA(gramatika)
+        dka.zobraz_DKA()
+    else:
+        print("Gramatika nie je regularna netvori sa DKA.")
+
+    print("\nDstranenie nadbytocnych symboklov")
+    gramatika.odstran_nadbytocne_symboly()
+    gramatika.zobraz()
+
+    print("\nTvorba First a Follow.")
+    ff = FF(gramatika)
+    ff.display_first_follow()
+
+    print("\nInput an NFA and convert it to a DFA...")
+    pridaj_automat = PridajAutomat()
+    pridaj_automat.input_nfa()
+    pridaj_automat.vyrob_DKA()
+
+
+if __name__ == "__main__":
+    main()
+
+
+
+   
