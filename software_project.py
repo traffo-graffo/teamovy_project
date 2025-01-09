@@ -76,3 +76,87 @@ class Gramatika:
         print("Pravidla:")
         for non_terminal, productions in self.pravidla.items():
             print(f"  {non_terminal} -> {' | '.join(productions)}")
+
+
+class Kontrola:
+    @staticmethod
+    def kontrola_bezkontextovosti(gramatika): # kontrola tohgo ci je gramatika bezkontextova
+        for neterminal in gramatika.pravidla: # Prejdeme ci vsetky neterminaly (ktore pouzivame ako lavu stranu pravidla)
+            if neterminal not in gramatika.neterminaly: # ak znak nie je v sete neterminalov, znamena to ze na lavej strane nie je neterminal
+                return False
+        return True
+
+    @staticmethod
+    def kontrola_regularity(gramatika): # kontroluje ci je gramatika regularna, teda ak je prava strana vsetkych poravidile jeden terminal alebo terminal a neterminal
+        for neterminal, prava_strana_pravidla in gramatika.pravidla.items(): # prejdeme kazde pravidlo
+            for terminal in prava_strana_pravidla:
+                if len(terminal) == 1: # ak je dlzka PSP 1 a znak nie je terminal nie je regularna
+                    if terminal not in gramatika.terminaly:
+                        return False
+                elif len(terminal) == 2: # ak je dlzka PSP 2 a prvy znak nieje terminal alebo druhy nie je neterminal nie je regularna
+                    if terminal[0] not in gramatika.terminaly or terminal[1] not in gramatika.neterminaly:
+                        return False
+                else:
+                    return False
+        return True
+
+
+class FF: # trieda pre tvorby fuirst a follow
+    def __init__(self, gramatika):
+        self.gramatika = gramatika
+        self.first = {nt: set() for nt in gramatika.neterminaly}
+        self.follow = {nt: set() for nt in gramatika.neterminaly}
+        self.najdi_first()
+        self.najdi_follow()
+
+    def najdi_first(self):
+        for terminal in self.gramatika.terminaly: # prave stranypravidiel su vzdy bud terminal alebo zacinaju sa terminalom v regularnej gramatike a teda first su ich terminbaly
+            self.first[terminal] = {terminal}
+
+        doslo_k_zmene = True # flag na zmenu
+        while doslo_k_zmene:
+            doslo_k_zmene = False
+            for neterminal, PSP in self.gramatika.pravidla.items():
+                for prod in PSP: # kazdy item v PSP
+                    stara_dlzka = len(self.first[neterminal]) #ulozim dlzku
+                    if prod[0] in self.gramatika.terminaly: # ak je na pravej strane terminal, pridam do first mnoziny 
+                        self.first[neterminal].add(prod[0])
+                    else:
+                        for symbol in prod: # ak nie je, vyprazdnim pomocou ''
+                            self.first[neterminal].update(self.first[symbol] - {''})
+                            if '' not in self.first[symbol]:
+                                break
+                        else:
+                            self.first[neterminal].add('')
+                    if len(self.first[neterminal]) > stara_dlzka: # ak je nova dlzka vacsia, doslo k zmene, pokracujem cyklus
+                        doslo_k_zmene = True
+
+    def najdi_follow(self):
+        """Compute the FOLLOW set for all non-terminals."""
+        self.follow[self.gramatika.start_symbol].add('$') # do follow Start symbolu pridam $ ako koniec file alebo epsilon
+        doslo_k_zmene = True # flag
+        while doslo_k_zmene:
+            doslo_k_zmene = False 
+            for non_terminal, productions in self.gramatika.pravidla.items():
+                for production in productions:
+                    follow_temp = self.follow[non_terminal] # temp follow kopia
+                    for i, symbol in enumerate(production): # pre kazdy symbol pravej strany
+                        if symbol in self.gramatika.neterminaly:
+                            stara_velkost = len(self.follow[symbol])
+                            if i + 1 < len(production):
+                                next_symbol = production[i + 1]
+                                self.follow[symbol].update(self.first[next_symbol] - {''})
+                                if '' in self.first[next_symbol]:
+                                    self.follow[symbol].update(follow_temp)
+                            else:
+                                self.follow[symbol].update(follow_temp)
+                            if len(self.follow[symbol]) > stara_velkost:
+                                doslo_k_zmene = True
+
+    def display_first_follow(self): # pomocna metoda pre vypisanie First a Follow
+        print("FIRST sety:")
+        for non_terminal, first_set in self.first.items():
+            print(f"  FIRST({non_terminal}) = {{ {', '.join(first_set)} }}")
+        print("\nFOLLOW sety:")
+        for non_terminal, follow_set in self.follow.items():
+            print(f"  FOLLOW({non_terminal}) = {{ {', '.join(follow_set)} }}")
