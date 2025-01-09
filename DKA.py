@@ -22,14 +22,14 @@ class Deterministicky_automat:
 
         print("Zadaj prechody 'stav,symbol -> nasledujuci stav' (zadaj done pre koniec):")
         while True:
-            transition_input = input()
-            if transition_input.lower() == 'done':
+            prechod_vstup = input()
+            if prechod_vstup.lower() == 'done':
                 break
             try:
-                left, right = transition_input.split("->")
-                state, symbol = left.split(",")
-                next_state = right.strip()
-                self.prechody[(state.strip(), symbol.strip())] = next_state
+                left, right = prechod_vstup.split("->")
+                stav, symbol = left.split(",")
+                nasl_stav = right.strip()
+                self.prechody[(stav.strip(), symbol.strip())] = nasl_stav
             except ValueError:
                 print("Nespravny vstup.")
 
@@ -37,7 +37,7 @@ class Deterministicky_automat:
 
         # Kontrola ci start_state je definovana v sete stavov
         if self.start_stav not in self.stavy:
-            print("Tento stav nieje definovany.")
+            print("Tento stav nie je definovany.")
             return False
 
         # Kontrola co koncove stavy su definovane v sete stavov
@@ -45,18 +45,7 @@ class Deterministicky_automat:
             print("Error: Niektore stavy alebo stav niesu definovane v sete stavov, skontroluj zadavanie stavov.")
             return False
 
-        # # Kontrola prechodov
-        # for state in self.stavy:
-        #     for symbol in self.abeceda:
-        #         if (state, symbol) not in self.prechody:
-        #             print(f"Stav {state} nema prechod {symbol}")
-        #             return False
-        #         if self.prechody[(state, symbol)] not in self.stavy:
-        #             print(f"Prechod {state} na symbol {symbol} ide do neznameho ciela {self.prechody[(state, symbol)]}")
-        #             return False    
 
-        # print("DKA je konzistentne")
-        # return True
     
         for state in self.stavy:
             has_outgoing = any((state, symbol) in self.prechody for symbol in self.abeceda)
@@ -65,7 +54,7 @@ class Deterministicky_automat:
                 print(f"Error: Stav {state} nie je na nic napojeny.")
                 return False
 
-        print("The DFA is consistent.")
+        print("DKA je konzistentne")
         return True
 
     def zobraz(self):
@@ -80,9 +69,9 @@ class Deterministicky_automat:
 
 def main():
     dfa = Deterministicky_automat()
-    # dfa.nacitaj_dka()
-    # dfa.zobraz()
-    # dfa.kontrola_konzistencie()
+    dfa.nacitaj_dka()
+    dfa.zobraz()
+    dfa.kontrola_konzistencie()
 
 
 if __name__ == "__main__":
@@ -105,27 +94,6 @@ class TestDeterministicAutomaton(unittest.TestCase):
         }
         self.assertFalse(self.dfa.kontrola_konzistencie())
 
-    # def test_nedefinovany_symbol(self):
-    #     self.dfa.stavy = {"q0", "q1"}
-    #     self.dfa.abeceda = {"a"}
-    #     self.dfa.start_stav = "q0"
-    #     self.dfa.koncove_stavy = {"q1"}
-    #     self.dfa.prechody = {
-    #         ("q0", "a"): "q1",
-    #         ("q1", "b"): "q0"  # b je nedefinovane
-    #     }
-    #     self.assertFalse(self.dfa.kontrola_konzistencie())
-
-    # def test_nekonzistentny_prechod(self):
-    #     self.dfa.stavy = {"q0", "q1"}
-    #     self.dfa.abeceda = {"a", "b"}
-    #     self.dfa.start_stav = "q0"
-    #     self.dfa.koncove_stavy = {"q1"}
-    #     self.dfa.prechody = {
-    #         ("q0", "a"): "q1"
-    #         # Missing transition for ("q0", "b")
-    #     }
-    #     self.assertFalse(self.dfa.kontrola_konzistencie())
 
     def test_nedefinovany_start_state(self):
         self.dfa.stavy = {"q1", "q2"}
@@ -151,5 +119,5 @@ class TestDeterministicAutomaton(unittest.TestCase):
         self.assertFalse(self.dfa.kontrola_konzistencie())
         
 
-if __name__ == "__main__":
-    unittest.main()
+# if __name__ == "__main__":
+#     unittest.main()

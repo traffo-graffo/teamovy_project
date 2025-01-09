@@ -12,11 +12,6 @@ class Gramatika:
         self.terminaly.add(terminal)
 
     def pridaj_pravidlo(self, neterminal, prava_strana_pravidla): # funkcia ktora prida pravidlo, s kontrolou, ci sa neterminal nachadza na lavej strane pravidla
-        """Add a production rule for a non-terminal.
-        Args:
-            non_terminal (str): The non-terminal symbol.
-            production (str): The production string (combination of terminals and/or non-terminals).
-        """
         if neterminal not in self.neterminaly:
             print(f"Error: '{neterminal}' nie je definovany neterminal.")
             return
@@ -51,8 +46,8 @@ class Gramatika:
                             break
 
         self.neterminaly = self.neterminaly.intersection(generujuce_symboly) # tu sa do v neterminaloch nechaju len tie neterminaly, ktore patria do generujuce symboly
-        self.pravidla = {nt: prods for nt, prods in self.pravidla.items() if nt in generujuce_symboly}
-
+        self.pravidla = {nt: [prod for prod in prods if all(symbol in generujuce_symboly or symbol in self.terminaly for symbol in prod)] for nt, prods in self.pravidla.items() if nt in generujuce_symboly}
+        # tu sa preiteruju vsetky pravidla ktore obsahuju neterminaly alebo terminaly z generujucej mnoziny, je to blbo dlhe ale fici to
         # Odstranenie nedosiahnutelnych symbolov, generacia mnoziny Vd
         dosiahnutelne = {self.start_symbol}
         na_spracovanie = [self.start_symbol] # pomocna, symboly ktore este treba spracovat
@@ -132,7 +127,6 @@ class FF: # trieda pre tvorby fuirst a follow
                         doslo_k_zmene = True
 
     def najdi_follow(self):
-        """Compute the FOLLOW set for all non-terminals."""
         self.follow[self.gramatika.start_symbol].add('$') # do follow Start symbolu pridam $ ako koniec file alebo epsilon
         doslo_k_zmene = True # flag
         while doslo_k_zmene:
@@ -168,7 +162,7 @@ class Vytvor_DKA:
         self.stavy = set()
         self.abeceda = gramatika.terminaly
         self.start_state = gramatika.start_symbol
-        self.prechody = {}  # {(state, symbol): next_state}
+        self.prechody = {}
         self.koncove_stavy = set()
         self.vytvor_DKA()
 
@@ -179,7 +173,6 @@ class Vytvor_DKA:
                     self.prechody[(non_terminal, PSP)] = 'q_akceptujuci'
                     self.koncove_stavy.add('q_akceptujuci')
                 elif len(PSP) == 2 and PSP[0] in self.gramatika.terminaly and PSP[1] in self.gramatika.neterminaly:
-                    # Case: A -> aB
                     self.prechody[(non_terminal, PSP[0])] = PSP[1]
 
                 self.stavy.add(non_terminal)
@@ -201,7 +194,7 @@ class PridajAutomat:
         self.stavy = set()
         self.abeceda = set()
         self.start_state = None
-        self.prechody = {}  # {(state, symbol): [next_states]}
+        self.prechody = {} 
         self.koncove_stavy = set()
 
     def input_nfa(self): # zadavanie DKA
@@ -274,75 +267,75 @@ class PridajAutomat:
         self.zobraz_DKA(DKA_stavy, DKA_start_state, DKA_koncove_stavy, DKA_prechody)
 
     def zobraz_DKA(self, DKA_stavy, DKA_start_state, DKA_koncove_stavy, DKA_prechody):
-        print("\nDKA Stavy:", [list(state) for state in DKA_stavy])
+        print("\nDKA Stavy:", [list(stav) for stav in DKA_stavy])
         print("DKA abeceda:", self.abeceda - {'epsilon'})
         print("DkA Start State:", list(DKA_start_state))
-        print("DkA Koncove_stavy:", [list(state) for state in DKA_koncove_stavy])
+        print("DkA Koncove_stavy:", [list(stav) for stav in DKA_koncove_stavy])
         print("DKA Prechody:")
-        for (state, symbol), next_state in DKA_prechody.items():
-            print(f"  ({list(state)}, '{symbol}') -> {list(next_state)}")
+        for (stav, symbol), dalsi_stav in DKA_prechody.items():
+            print(f"  ({list(stav)}, '{symbol}') -> {list(dalsi_stav)}")
 
 
-def main():
-    gramatika = Gramatika()
+# def main():
+#     gramatika = Gramatika()
 
-    print("Zadaj neterminaly (oddelene ciarkou):")
-    neterminaly = input().split(",")
-    for nt in neterminaly:
-        gramatika.pridaj_neterminaly(nt.strip())
+#     print("Zadaj neterminaly (oddelene ciarkou):")
+#     neterminaly = input().split(",")
+#     for nt in neterminaly:
+#         gramatika.pridaj_neterminaly(nt.strip())
 
-    print("Zadaj terminaly (comma-separated):")
-    terminaly = input().split(",")
-    for t in terminaly:
-        gramatika.pridaj_terminal(t.strip())
+#     print("Zadaj terminaly (comma-separated):")
+#     terminaly = input().split(",")
+#     for t in terminaly:
+#         gramatika.pridaj_terminal(t.strip())
 
-    print("Zadaj pravidla 'NonTerminal -> production' ('done' na ukoncenie):")
-    while True:
-        zadaj_pravidla = input()
-        if zadaj_pravidla.lower() == 'done':
-            break
-        try:
-            neterminal, PSP = zadaj_pravidla.split("->")
-            gramatika.pridaj_pravidlo(neterminal.strip(), PSP.strip())
-        except ValueError:
-            print("Nespravny format")
+#     print("Zadaj pravidla 'NonTerminal -> production' ('done' na ukoncenie):")
+#     while True:
+#         zadaj_pravidla = input()
+#         if zadaj_pravidla.lower() == 'done':
+#             break
+#         try:
+#             neterminal, PSP = zadaj_pravidla.split("->")
+#             gramatika.pridaj_pravidlo(neterminal.strip(), PSP.strip())
+#         except ValueError:
+#             print("Nespravny format")
 
-    print("Zadaj zaciatocny netemrinal:")
-    start_symbol = input().strip()
-    gramatika.urci_start_symbol(start_symbol)
+#     print("Zadaj zaciatocny netemrinal:")
+#     start_symbol = input().strip()
+#     gramatika.urci_start_symbol(start_symbol)
 
-    gramatika.zobraz()
+#     gramatika.zobraz()
 
-    print("\nKontrola typu gramatiky")
-    if Kontrola.kontrola_bezkontextovosti(gramatika):
-        print("Gramatika je bezkontextova.")
-    else:
-        print("Gramatika nie je bezkontextova.")
+#     print("\nKontrola typu gramatiky")
+#     if Kontrola.kontrola_bezkontextovosti(gramatika):
+#         print("Gramatika je bezkontextova.")
+#     else:
+#         print("Gramatika nie je bezkontextova.")
 
-    if Kontrola.kontrola_regularity(gramatika):
-        print("Gramatika je regularna.")
-        print("\nTvorba DKA")
-        dka = Vytvor_DKA(gramatika)
-        dka.zobraz_DKA()
-    else:
-        print("Gramatika nie je regularna netvori sa DKA.")
+#     if Kontrola.kontrola_regularity(gramatika):
+#         print("Gramatika je regularna.")
+#         print("\nTvorba DKA")
+#         dka = Vytvor_DKA(gramatika)
+#         dka.zobraz_DKA()
+#     else:
+#         print("Gramatika nie je regularna netvori sa DKA.")
 
-    print("\nDstranenie nadbytocnych symboklov")
-    gramatika.odstran_nadbytocne_symboly()
-    gramatika.zobraz()
+#     print("\nOdstranenie nadbytocnych symboklov")
+#     gramatika.odstran_nadbytocne_symboly()
+#     gramatika.zobraz()
 
-    print("\nTvorba First a Follow.")
-    ff = FF(gramatika)
-    ff.display_first_follow()
+#     print("\nTvorba First a Follow.")
+#     ff = FF(gramatika)
+#     ff.display_first_follow()
 
-    print("\nInput an NFA and convert it to a DFA...")
-    pridaj_automat = PridajAutomat()
-    pridaj_automat.input_nfa()
-    pridaj_automat.vyrob_DKA()
+#     print("\nZadaj NKA pre transformaciu na DKA")
+#     pridaj_automat = PridajAutomat()
+#     pridaj_automat.input_nfa()
+#     pridaj_automat.vyrob_DKA()
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
 
 
 
