@@ -160,3 +160,37 @@ class FF: # trieda pre tvorby fuirst a follow
         print("\nFOLLOW sety:")
         for non_terminal, follow_set in self.follow.items():
             print(f"  FOLLOW({non_terminal}) = {{ {', '.join(follow_set)} }}")
+
+
+class Vytvor_DKA:
+    def __init__(self, gramatika):
+        self.gramatika = gramatika
+        self.stavy = set()
+        self.abeceda = gramatika.terminaly
+        self.start_state = gramatika.start_symbol
+        self.prechody = {}  # {(state, symbol): next_state}
+        self.koncove_stavy = set()
+        self.vytvor_DKA()
+
+    def vytvor_DKA(self): # z regularnej gramatiky vyutvori DKA
+        for non_terminal, prod in self.gramatika.pravidla.items():
+            for PSP in prod:
+                if len(PSP) == 1 and PSP in self.gramatika.terminaly: # ak je na pravej strane iba terminal ideme do akceptujuceho stavu
+                    self.prechody[(non_terminal, PSP)] = 'q_akceptujuci'
+                    self.koncove_stavy.add('q_akceptujuci')
+                elif len(PSP) == 2 and PSP[0] in self.gramatika.terminaly and PSP[1] in self.gramatika.neterminaly:
+                    # Case: A -> aB
+                    self.prechody[(non_terminal, PSP[0])] = PSP[1]
+
+                self.stavy.add(non_terminal)
+                if len(PSP) == 2:
+                    self.stavy.add(PSP[1])
+
+    def zobraz_DKA(self): # pomocna na zobrazenie
+        print("Stavy:", self.stavy)
+        print("Abeceda:", self.abeceda)
+        print("Start_state:", self.start_state)
+        print("Koncove stavy:", self.koncove_stavy)
+        print("Prechody:")
+        for (stav, symbol), do_stavu in self.prechody.items():
+            print(f"  ({stav}, '{symbol}') -> {do_stavu}")
